@@ -6,6 +6,7 @@ import {
   createWebHashHistory,
 } from 'vue-router'
 import routes from './routes'
+import { supabase } from 'src/boot/supabase'
 
 /*
  * If not building with SSR mode, you can
@@ -31,6 +32,28 @@ export default defineRouter(function (/* { store, ssrContext } */) {
     // quasar.conf.js -> build -> vueRouterMode
     // quasar.conf.js -> build -> publicPath
     history: createHistory(process.env.VUE_ROUTER_BASE),
+  })
+
+  // Navigation Guard for Auth
+  Router.beforeEach(async (to, from, next) => {
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+
+      const requiresAuth = to.matched.some((record) => record.meta.requiresAuth)
+
+      if (requiresAuth && !session) {
+        next('/login')
+      } else if (to.path === '/login' && session) {
+        next('/dashboard')
+      } else {
+        next()
+      }
+    } catch (error) {
+      console.error('Auth Guard Error:', error)
+      next()
+    }
   })
 
   return Router
